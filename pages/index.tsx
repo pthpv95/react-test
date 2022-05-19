@@ -1,6 +1,7 @@
 import type { NextPage } from 'next';
 import { useEffect, useState } from 'react';
 import styled from 'styled-components';
+import config from '../config';
 import { CATEGORY_MAPPING } from '../constants';
 import { IGameDataResponse } from '../types/IGameDataResponse';
 import Ribbon from '../widgets/Ribbon';
@@ -165,7 +166,7 @@ const Home: NextPage = (props) => {
     [gameId: string]: number;
   }> => {
     const res = await fetch(
-      'http://stage.whgstage.com/front-end-test/jackpots.php'
+      `${config.API_URL}/jackpots.php`
     );
     try {
       const result: IJackpotGameResponse[] = await res.json();
@@ -212,7 +213,7 @@ const Home: NextPage = (props) => {
   }, []);
 
   useEffect(() => {
-    fetch('http://stage.whgstage.com/front-end-test/games.php')
+    fetch(`${config.API_URL}/games.php`)
       .then((res) => res.json())
       .then(async (data: IGameDataResponse[]) => {
         const ctg: string[] = [];
