@@ -74,20 +74,24 @@ const GameItem = styled.div`
   transition: transform 0.6s ${bezier};
   border-radius: 20px;
   height: 100%;
-  &:hover {
-    transform: scale(1.04255) translate(0px, -4px);
-    transition-duration: 0.3s;
-    box-shadow: rgb(0 0 0 / 24%) 0px 6px 12px 0px;
-  }
+  
+  /* Only apply for web */
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      transform: scale(1.04255) translate(0px, -4px);
+      transition-duration: 0.3s;
+      box-shadow: rgb(0 0 0 / 24%) 0px 6px 12px 0px;
+    }
 
-  &:hover > ${GameLabel} {
-    opacity: 1;
-    transform: translate(0px, 0px);
-  }
+    &:hover > ${GameLabel} {
+      opacity: 1;
+      transform: translate(0px, 0px);
+    }
 
-  &:hover > ${PlayGameImage} {
-    opacity: 1;
-    transform: translate(0px, 0px);
+    &:hover > ${PlayGameImage} {
+      opacity: 1;
+      transform: translate(0px, 0px);
+    }
   }
 `;
 
@@ -109,7 +113,7 @@ const JackpotPrice = styled.span`
   background-color: rgba(0, 0, 0, 0.5);
 `;
 
-const TopNav = styled.div`
+const TopCategories = styled.div`
   overflow: auto;
   background-color: #373737;
   padding: 15px;
@@ -121,10 +125,14 @@ const TopNav = styled.div`
     font-size: 17px;
     text-transform: capitalize;
   }
-  a:hover {
-    background-color: #8dc63f;
-    color: black;
-    cursor: pointer;
+
+  /* Only apply for web */
+  @media (hover: hover) and (pointer: fine) {
+    a:hover {
+      background-color: #8dc63f;
+      color: black;
+      cursor: pointer;
+    }
   }
 
   a.active {
@@ -287,12 +295,12 @@ const Home: NextPage = (props) => {
 
   return (
     <div>
-      <TopNav>
+      <TopCategories>
         {categories
           .filter((c) => !CATEGORY_MAPPING['other'].includes(c))
           .map((category, idx) => renderCategoryItem(category))}
         {renderCategoryItem('other')}
-      </TopNav>
+      </TopCategories>
       <GameFeed>
         {games.map((game) => (
           <GameItem key={game.id}>
@@ -301,6 +309,7 @@ const Home: NextPage = (props) => {
             <GameImage
               src={game.image.replace('//', 'https://')}
               alt={game.name}
+              loading='lazy'
             />
             <PlayGameImage src='/play.png' alt='play-game' />
             <GameLabel>{game.name}</GameLabel>

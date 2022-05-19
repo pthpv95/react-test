@@ -16,7 +16,6 @@ const RibbonWrapper = styled.div`
   width: 75px; height: 75px;
   text-align: right;
 }
-
 .ribbon span {
   font-size: 10px;
   font-weight: bold;
@@ -29,7 +28,7 @@ const RibbonWrapper = styled.div`
   width: 100px;
   display: block;
   background: #79A70A;
-  background: linear-gradient(#9BC90D 0%, #79A70A 100%);
+  background: linear-gradient(#8DC63F 0%, #79A70A 100%);
   box-shadow: 0 3px 10px -5px rgba(0, 0, 0, 1);
   position: absolute;
   top: 19px; right: -21px;
