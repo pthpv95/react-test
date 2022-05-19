@@ -1,31 +1,30 @@
 import type { NextPage } from 'next';
-import Image from 'next/image';
-import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { CATEGORY_MAPPING } from '../constants';
 import { IGameDataResponse } from '../types/IGameDataResponse';
 
+const bezier = 'cubic-bezier(0.25,0.1,0.25,1)';
+
 const GameFeed = styled.div`
-  max-width: 1200px;
   margin: 0 auto;
   display: grid;
   grid-row-gap: 20px;
   grid-column-gap: 20px;
-  padding-top: 40px;
+  padding: 40px;
 
   /* Screen larger than 300px? 1 column */
   @media (min-width: 300px) {
     grid-template-columns: repeat(1, 1fr);
   }
 
-  /* Screen larger than 400px? 2 column */
-  @media (min-width: 400px) {
-    grid-template-columns: repeat(2, 1fr);
+  /* Screen larger than 600px? 3 column */
+  @media (min-width: 600px) {
+    grid-template-columns: repeat(3, 1fr);
   }
 
-  /* Screen larger than 600px? 4 column */
-  @media (min-width: 600px) {
+  /* Screen larger than 800px? 4 column */
+  @media (min-width: 800px) {
     grid-template-columns: repeat(4, 1fr);
   }
 
@@ -35,15 +34,66 @@ const GameFeed = styled.div`
   }
 `;
 
+const GameLabel = styled.span`
+  z-index: 10;
+  width: 100%;
+  opacity: 0;
+  position: absolute;
+  right: 0px;
+  bottom: 0px;
+  left: 0px;
+  transition: transform 0.3s ${bezier} 0.1s, opacity 0.3s ${bezier} 0.1s;
+  transform: translate(0px, 8px);
+  color: #ffffff;
+  padding: 5px;
+  font-size: 14px;
+  font-weight: bold;
+`;
+
+const PlayGameImage = styled.img`
+  position: absolute;
+  width: 55px;
+  height: 55px;
+
+  opacity: 0;
+  transition: transform 0.3s ${bezier} 0.1s, opacity 0.3s ${bezier} 0.1s;
+  transform: translate(0px, 8px);
+
+  top: 50%;
+  left: 50%;
+  margin: -25px 0 0 -25px;
+`;
+
 const GameItem = styled.div`
   position: relative;
   cursor: pointer;
   text-align: center;
   background-color: #fcfcfc;
+  display: block;
+  transition: transform 0.6s ${bezier};
+  border-radius: 20px;
 
-  img {
-    border-radius: 20px;
+  &:hover {
+    transform: scale(1.04255) translate(0px, -4px);
+    transition-duration: 0.3s;
+    box-shadow: rgb(0 0 0 / 24%) 0px 6px 12px 0px;
   }
+
+  &:hover > ${GameLabel} {
+    opacity: 1;
+    transform: translate(0px, 0px);
+  }
+
+  &:hover > ${PlayGameImage} {
+    opacity: 1;
+    transform: translate(0px, 0px);
+  }
+`;
+
+const GameImage = styled.img`
+  width: 100%;
+  height: 100%;
+  border-radius: 20px;
 `;
 
 const JackpotPrice = styled.span`
@@ -56,7 +106,7 @@ const JackpotPrice = styled.span`
   border-top-right-radius: 20px;
   font-weight: bold;
   background-color: rgba(0, 0, 0, 0.5);
-`
+`;
 
 const TopNav = styled.div`
   overflow: hidden;
@@ -99,16 +149,17 @@ const Home: NextPage = (props) => {
   const [gameData, setGameData] = useState<IGameDataResponse[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>('');
-
   const [games, setGames] = useState<IGameData[]>([]);
-  const router = useRouter();
-  const { category } = router.query;
 
   const fetchGamesJackpot = async (): Promise<IJackpotGameResponse[]> => {
     const res = await fetch(
       'http://stage.whgstage.com/front-end-test/jackpots.php'
     );
-    return await res.json();
+    try {
+      return await res.json();
+    } catch (error) {
+      return [];
+    }
   };
 
   const formatMoney = (value: number) => {
@@ -137,7 +188,7 @@ const Home: NextPage = (props) => {
           return updatedGames;
         });
       });
-    }, 5000);
+    }, 10000);
 
     return () => {
       clearInterval(intervalId);
@@ -230,15 +281,13 @@ const Home: NextPage = (props) => {
       <GameFeed>
         {games.map((game) => (
           <GameItem key={game.id}>
-            {game.jackpot && (
-              <JackpotPrice>{game.jackpot}</JackpotPrice>
-            )}
-            <Image
-              width={250}
-              height={150}
+            {game.jackpot && <JackpotPrice>{game.jackpot}</JackpotPrice>}
+            <GameImage
               src={game.image.replace('//', 'https://')}
               alt={game.name}
             />
+            <PlayGameImage src='/play.png' alt='play-game' />
+            <GameLabel>{game.name}</GameLabel>
           </GameItem>
         ))}
       </GameFeed>
