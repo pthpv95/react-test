@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { CATEGORY_MAPPING } from '../constants';
 import { IGameDataResponse } from '../types/IGameDataResponse';
+import Ribbon from '../widgets/Ribbon';
 
 const bezier = 'cubic-bezier(0.25,0.1,0.25,1)';
 
@@ -72,7 +73,7 @@ const GameItem = styled.div`
   display: block;
   transition: transform 0.6s ${bezier};
   border-radius: 20px;
-
+  height: 100%;
   &:hover {
     transform: scale(1.04255) translate(0px, -4px);
     transition-duration: 0.3s;
@@ -109,10 +110,9 @@ const JackpotPrice = styled.span`
 `;
 
 const TopNav = styled.div`
-  overflow: hidden;
+  overflow: auto;
   background-color: #373737;
-  display: flex;
-  justify-content: space-evenly;
+  padding: 15px;
   a {
     color: #ffffff;
     text-align: center;
@@ -137,7 +137,9 @@ interface IGameData {
   id: string;
   name: string;
   image: string;
+  categories: string[];
   jackpot?: string;
+  ribbon?: string;
 }
 
 interface IJackpotGameResponse {
@@ -151,14 +153,20 @@ const Home: NextPage = (props) => {
   const [activeCategory, setActiveCategory] = useState<string>('');
   const [games, setGames] = useState<IGameData[]>([]);
 
-  const fetchGamesJackpot = async (): Promise<IJackpotGameResponse[]> => {
+  const fetchGamesJackpot = async (): Promise<{
+    [gameId: string]: number;
+  }> => {
     const res = await fetch(
       'http://stage.whgstage.com/front-end-test/jackpots.php'
     );
     try {
-      return await res.json();
+      const result: IJackpotGameResponse[] = await res.json();
+      return result.reduce((acc: any, cur: any) => {
+        acc[cur.game] = cur.amount;
+        return acc;
+      }, {});
     } catch (error) {
-      return [];
+      return {};
     }
   };
 
@@ -172,14 +180,14 @@ const Home: NextPage = (props) => {
 
   useEffect(() => {
     const intervalId = setInterval(() => {
-      fetchGamesJackpot().then((data: IJackpotGameResponse[]) => {
+      fetchGamesJackpot().then((data: any) => {
         setGames((games) => {
           const updatedGames = games.map((game) => {
-            const matchGame = data.find((g) => g.game === game.id);
-            if (matchGame) {
+            const jackpotGame = data[game.id];
+            if (jackpotGame) {
               return {
                 ...game,
-                jackpot: formatMoney(matchGame.amount),
+                jackpot: formatMoney(jackpotGame),
               };
             }
 
@@ -188,7 +196,7 @@ const Home: NextPage = (props) => {
           return updatedGames;
         });
       });
-    }, 10000);
+    }, 2000);
 
     return () => {
       clearInterval(intervalId);
@@ -202,8 +210,11 @@ const Home: NextPage = (props) => {
         const ctg: string[] = [];
         const jackpotGames = await fetchGamesJackpot();
 
-        data.map((item) => {
-          ctg.push(...item.categories);
+        data.forEach((gameItem: IGameData) => {
+          ctg.push(...gameItem.categories);
+          if (jackpotGames[gameItem.id]) {
+            gameItem.jackpot = formatMoney(jackpotGames[gameItem.id]);
+          }
         });
 
         const uniqCategories = ctg.filter(
@@ -212,16 +223,6 @@ const Home: NextPage = (props) => {
 
         const defaultCategory = uniqCategories[0];
         const games = getGamesByCategory(defaultCategory, data);
-        games.forEach((game) => {
-          const gameJackpot = jackpotGames.find(
-            (jackpot) => jackpot.game === game.id
-          );
-
-          if (gameJackpot) {
-            game.jackpot = formatMoney(gameJackpot.amount);
-          }
-        });
-
         setCategories(uniqCategories);
         setActiveCategory(defaultCategory);
         setGameData(data);
@@ -245,6 +246,20 @@ const Home: NextPage = (props) => {
       games = gameData.filter((game) =>
         game.categories.includes(selectedCategory)
       );
+    }
+
+    const ribbonCategories = ['new', 'top'];
+    if (!ribbonCategories.includes(selectedCategory)) {
+      games.forEach((game) => {
+        const gameWithRibbon = game.categories.filter((item) =>
+          ribbonCategories.includes(item)
+        );
+        if (gameWithRibbon.length) {
+          game.ribbon =
+            game.categories.find((c) => c === 'top') ||
+            game.categories.find((c) => c === 'new');
+        }
+      });
     }
 
     return games;
@@ -281,6 +296,7 @@ const Home: NextPage = (props) => {
       <GameFeed>
         {games.map((game) => (
           <GameItem key={game.id}>
+            {game.ribbon && <Ribbon text={game.ribbon} />}
             {game.jackpot && <JackpotPrice>{game.jackpot}</JackpotPrice>}
             <GameImage
               src={game.image.replace('//', 'https://')}
