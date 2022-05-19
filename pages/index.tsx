@@ -75,7 +75,7 @@ const GameItem = styled.div`
   transition: transform 0.6s ${bezier};
   border-radius: 20px;
   height: 100%;
-  
+
   /* Only apply for web */
   @media (hover: hover) and (pointer: fine) {
     &:hover {
@@ -157,17 +157,16 @@ interface IJackpotGameResponse {
 }
 
 const Home: NextPage = (props) => {
-  const [gameData, setGameData] = useState<IGameDataResponse[]>([]);
+  const [gameData, setGameData] = useState<any>({});
   const [categories, setCategories] = useState<string[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>('');
   const [games, setGames] = useState<IGameData[]>([]);
+  const [jackpotGames, setJackpotGames] = useState<any>({});
 
   const fetchGamesJackpot = async (): Promise<{
     [gameId: string]: number;
   }> => {
-    const res = await fetch(
-      `${config.API_URL}/jackpots.php`
-    );
+    const res = await fetch(`${config.API_URL}/jackpots.php`);
     try {
       const result: IJackpotGameResponse[] = await res.json();
       return result.reduce((acc: any, cur: any) => {
@@ -188,29 +187,20 @@ const Home: NextPage = (props) => {
   };
 
   useEffect(() => {
+    if (!activeCategory) {
+      return;
+    }
+
     const intervalId = setInterval(() => {
       fetchGamesJackpot().then((data: any) => {
-        setGames((games) => {
-          const updatedGames = games.map((game) => {
-            const jackpotGame = data[game.id];
-            if (jackpotGame) {
-              return {
-                ...game,
-                jackpot: formatMoney(jackpotGame),
-              };
-            }
-
-            return game;
-          });
-          return updatedGames;
-        });
+        setJackpotGames(data);
       });
     }, 2000);
 
     return () => {
       clearInterval(intervalId);
     };
-  }, []);
+  }, [activeCategory]);
 
   useEffect(() => {
     fetch(`${config.API_URL}/games.php`)
@@ -218,6 +208,7 @@ const Home: NextPage = (props) => {
       .then(async (data: IGameDataResponse[]) => {
         const ctg: string[] = [];
         const jackpotGames = await fetchGamesJackpot();
+        const gamesByCategory: any = {};
 
         data.forEach((gameItem: IGameData) => {
           ctg.push(...gameItem.categories);
@@ -230,53 +221,47 @@ const Home: NextPage = (props) => {
           (item, pos) => ctg.indexOf(item) === pos
         );
 
+        uniqCategories.forEach((category) => {
+          const isOtherCategory = CATEGORY_MAPPING['other'].includes(category);
+
+          const filterCallback = (game: IGameDataResponse) => {
+            if (isOtherCategory) {
+              return game.categories.some((_category) =>
+                CATEGORY_MAPPING['other'].includes(_category)
+              );
+            }
+            return game.categories.includes(category);
+          };
+
+          gamesByCategory[isOtherCategory ? 'other' : category] =
+            data.filter(filterCallback);
+        });
+
         const defaultCategory = uniqCategories[0];
-        const games = getGamesByCategory(defaultCategory, data);
         setCategories(uniqCategories);
         setActiveCategory(defaultCategory);
-        setGameData(data);
-        setGames(games);
+        setGameData(gamesByCategory);
       });
   }, []);
 
-  const getGamesByCategory = (
-    selectedCategory: string,
-    gameData: IGameDataResponse[]
-  ) => {
-    let games: IGameData[] = [];
-
-    if (selectedCategory === 'other') {
-      games = gameData.filter((game) =>
-        game.categories.some((category) =>
-          CATEGORY_MAPPING['other'].includes(category)
-        )
-      );
-    } else {
-      games = gameData.filter((game) =>
-        game.categories.includes(selectedCategory)
-      );
-    }
-
+  const getGameRibbon = (game: IGameDataResponse) => {
     const ribbonCategories = ['new', 'top'];
-    if (!ribbonCategories.includes(selectedCategory)) {
-      games.forEach((game) => {
-        const gameWithRibbon = game.categories.filter((item) =>
-          ribbonCategories.includes(item)
+    if (!ribbonCategories.includes(activeCategory)) {
+      const gameWithRibbon = game.categories.filter((item) =>
+        ribbonCategories.includes(item)
+      );
+      if (gameWithRibbon.length) {
+        return (
+          game.categories.find((c) => c === 'top') ||
+          game.categories.find((c) => c === 'new')
         );
-        if (gameWithRibbon.length) {
-          game.ribbon =
-            game.categories.find((c) => c === 'top') ||
-            game.categories.find((c) => c === 'new');
-        }
-      });
+      }
     }
-
-    return games;
+    return;
   };
 
   const onCategoryClick = (category: string) => {
     setActiveCategory(category);
-    setGames(getGamesByCategory(category, gameData));
   };
 
   const renderCategoryItem = (category: string) => {
@@ -303,19 +288,26 @@ const Home: NextPage = (props) => {
         {renderCategoryItem('other')}
       </TopCategories>
       <GameFeed>
-        {games.map((game) => (
-          <GameItem key={game.id}>
-            {game.ribbon && <Ribbon text={game.ribbon} />}
-            {game.jackpot && <JackpotPrice>{game.jackpot}</JackpotPrice>}
-            <GameImage
-              src={game.image.replace('//', 'https://')}
-              alt={game.name}
-              loading='lazy'
-            />
-            <PlayGameImage src='/play.png' alt='play-game' />
-            <GameLabel>{game.name}</GameLabel>
-          </GameItem>
-        ))}
+        {gameData[activeCategory]?.map((game: IGameData) => {
+          const gameRibbon = getGameRibbon(game);
+          return (
+            <GameItem key={game.id}>
+              {gameRibbon && <Ribbon text={gameRibbon} />}
+              {jackpotGames[game.id] && (
+                <JackpotPrice>
+                  {formatMoney(jackpotGames[game.id])}
+                </JackpotPrice>
+              )}
+              <GameImage
+                src={game.image.replace('//', 'https://')}
+                alt={game.name}
+                loading='lazy'
+              />
+              <PlayGameImage src='/play.png' alt='play-game' />
+              <GameLabel>{game.name}</GameLabel>
+            </GameItem>
+          );
+        })}
       </GameFeed>
     </div>
   );
